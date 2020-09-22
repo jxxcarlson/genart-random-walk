@@ -142,6 +142,20 @@ renderPath (V2 x y:vs) = do
   for_ vs $ \v -> let V2 x' y' = v in lineTo x' y'
 renderPath [] = pure ()
 
+drawSquare :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
+drawSquare r g b a x y = do
+  setSourceRGBA r g b a
+  rectangle x y 0.4 0.4
+  fill
+
+renderPath2 :: Double -> Double -> Double -> Double -> [V2 Double] -> Render ()
+renderPath2 r g b a (V2 x y:vs) = do
+  drawSquare r g b a x y
+  for_ vs $ \v -> let V2 x' y' = v in drawSquare r g b a x' y'
+renderPath2 _ _ _ _ [] = pure ()
+
+
+
 ---  COLORS ---
 
 teaGreen :: Double -> Render ()
@@ -153,8 +167,9 @@ vividTangerine = hsva 11 0.40 0.92
 englishVermillion :: Double -> Render ()
 englishVermillion = hsva 355 0.68 0.84
 
-darkGunmetal :: Double -> Render ()
-darkGunmetal = hsva 170 0.30 0.16
+
+darkBlue :: Double -> Render ()
+darkBlue = hsva 243 0.50 0.1
 
 --- RENDER ---
 
@@ -167,14 +182,24 @@ renderBlankSketch = do
 
 renderSketch :: Generate ()
 renderSketch = do
-  fillScreen eggshell 1
+  fillScreen darkBlue 1
 
   cairo $ setLineWidth 0.15
   
-  points <- genBrownianPath 1000
+  points1 <- genBrownianPath 5000
+  points2 <- genBrownianPath 5000
+  points3 <- genBrownianPath 5000
+  points4 <- genBrownianPath 5000
   cairo $ do 
-    renderPath points
-    (englishVermillion 280) *> stroke
+    renderPath2 0 0 1 0.3 points1
+    renderPath2 0.52 0 1 0.3 points2
+    renderPath2 0 0 1 0.3 points3
+    renderPath2 0.52 0 1 0.3 points4
+    -- renderPath  points1
+    -- (englishVermillion 280) *> stroke
+    -- renderPath  points2
+    -- (englishVermillion 280) *> stroke
+    
 
 -- evalRandIO $ renderPath <$> (pathV2 30 30 200) :: IO (Render ())
 
