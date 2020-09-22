@@ -16,18 +16,8 @@ module Main where
 
 import           Control.Arrow
 import           Control.Concurrent
-import Control.Monad.Random
-    ( uniform,
-      weighted,
-      evalRandIO,
-      runRandT,
-      replicateM,
-      void,
-      mkStdGen,
-      MonadRandom(getRandomR),
-      RandT,
-      StdGen,
-      MonadTrans(lift) )
+import Control.Monad.Random( uniform, weighted, evalRandIO, runRandT, replicateM,  void, mkStdGen,
+      MonadRandom(getRandomR), RandT,  StdGen, MonadTrans(lift) )
 import           Control.Monad.Reader
 import           Data.Colour.RGBSpace
 import           Data.Colour.RGBSpace.HSV
@@ -35,22 +25,9 @@ import           Data.Foldable            (for_)
 import           Data.List                (nub)
 import           Data.Semigroup           ((<>))
 import           Data.Time.Clock.POSIX
-import Graphics.Rendering.Cairo
-    ( closePath,
-      createImageSurface,
-      fill,
-      lineTo,
-      moveTo,
-      newPath,
-      rectangle,
-      renderWith,
-      scale,
-      setLineWidth,
-      setSourceRGBA,
-      stroke,
-      surfaceWriteToPNG,
-      Render,
-      Format(FormatARGB32) )
+import Graphics.Rendering.Cairo ( closePath, createImageSurface, fill, lineTo, moveTo, newPath,
+      rectangle, renderWith, scale, setLineWidth, setSourceRGBA, stroke, surfaceWriteToPNG,
+      Render, Format(FormatARGB32) )
 import           Linear.V2
 import           Linear.Vector
 import qualified Numeric.Noise.Perlin     as P
@@ -63,15 +40,47 @@ data World = World
   , worldScale  :: Double
   }
 
--- data Quad = Quad
---   { quadA :: V2 Double
---   , quadB :: V2 Double
---   , quadC :: V2 Double
---   , quadD :: V2 Double
---   } deriving (Eq, Ord)
 
+--- GENERATE A RANDOM WALK ---
 
 type Generate a = RandT StdGen (ReaderT World Render) a
+
+origin_ :: V2 Double 
+origin_ = V2 30 30
+
+genPoints :: Int -> Generate [V2 Double]
+genPoints n = replicateM n $ V2 <$> getRandomR  (-1, 1) <*> getRandomR (-1, 1)
+
+genBrownianPath :: Int -> Generate [V2 Double]
+genBrownianPath n = liftM2 (scanl (^+^)) (pure origin_) (genPoints n)
+
+
+--- RENDERING ---
+
+-- Render broken line path connecting the points of the argument
+renderPath :: [V2 Double] -> Render ()
+renderPath (V2 x y:vs) = do
+  newPath
+  moveTo x y
+  for_ vs $ \v -> let V2 x' y' = v in lineTo x' y'
+renderPath [] = pure ()
+
+-- Render a small square of given color with upper left corners at the points of the argument
+renderPath2 :: Double -> Double -> Double -> Double -> [V2 Double] -> Render ()
+renderPath2 r g b a (V2 x y:vs) = do
+  drawSquare r g b a x y
+  for_ vs $ \v -> let V2 x' y' = v in drawSquare r g b a x' y'
+renderPath2 _ _ _ _ [] = pure ()
+
+drawSquare :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
+drawSquare r g b a x y = do
+  setSourceRGBA r g b a
+  rectangle x y 0.4 0.4
+  fill
+
+
+darkBlue :: Double -> Render ()
+darkBlue = hsva 243 0.50 0.1
 
 -- | Lift a Cairo action into a Generate action
 cairo :: Render a -> Generate a
@@ -93,92 +102,6 @@ hsva :: Double -> Double -> Double -> Double -> Render ()
 hsva h s v = setSourceRGBA channelRed channelGreen channelBlue
  where RGB{..} = hsv h s v
 
-eggshell :: Double -> Render ()
-eggshell = hsva 71 0.13 0.96
-
-fromIntegralVector :: V2 Int -> V2 Double
-fromIntegralVector (V2 x y) = V2 (fromIntegral x) (fromIntegral y)
-
-origin_ :: V2 Double 
-origin_ = V2 30 30
-
-genPoints :: Int -> Generate [V2 Double]
-genPoints n = replicateM n $ V2 <$> getRandomR  (-1, 1) <*> getRandomR (-1, 1)
-
-genBrownianPath :: Int -> Generate [V2 Double]
-genBrownianPath n = liftM2 (scanl (^+^)) (pure origin_) (genPoints n)
-
-
-
-genQuadGrid :: Generate [Quad]
-genQuadGrid = do
-  (w, h) <- getSize @Int
-  vectors <- replicateM 800 $ do
-    v <- V2 <$> getRandomR (3, w `div` 2 - 3) <*> getRandomR (3, h `div` 2 - 3)
-    pure $ v ^* 2
-  pure . nub . flip map vectors $ \v ->
-    let v' = fromIntegralVector v
-    in Quad v' (v' ^+^ V2 0 1.5) (v' ^+^ V2 1.5 1.5) (v' ^+^ V2 1.5 0)
-
-renderClosedPath :: [V2 Double] -> Render ()
-renderClosedPath (V2 x y:vs) = do
-  newPath
-  moveTo x y
-  for_ vs $ \v -> let V2 x' y' = v in lineTo x' y'
-  closePath
-renderClosedPath [] = pure ()
-
-testPath :: [V2 Double]
-testPath = [V2 30 30, V2 30 35, V2 35 35, V2 35 30]
-
-
-renderedTestPath :: Render ()
-renderedTestPath = renderPath testPath
-
-renderPath :: [V2 Double] -> Render ()
-renderPath (V2 x y:vs) = do
-  newPath
-  moveTo x y
-  for_ vs $ \v -> let V2 x' y' = v in lineTo x' y'
-renderPath [] = pure ()
-
-drawSquare :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
-drawSquare r g b a x y = do
-  setSourceRGBA r g b a
-  rectangle x y 0.4 0.4
-  fill
-
-renderPath2 :: Double -> Double -> Double -> Double -> [V2 Double] -> Render ()
-renderPath2 r g b a (V2 x y:vs) = do
-  drawSquare r g b a x y
-  for_ vs $ \v -> let V2 x' y' = v in drawSquare r g b a x' y'
-renderPath2 _ _ _ _ [] = pure ()
-
-
-
----  COLORS ---
-
-teaGreen :: Double -> Render ()
-teaGreen = hsva 81 0.25 0.94
-
-vividTangerine :: Double -> Render ()
-vividTangerine = hsva 11 0.40 0.92
-
-englishVermillion :: Double -> Render ()
-englishVermillion = hsva 355 0.68 0.84
-
-
-darkBlue :: Double -> Render ()
-darkBlue = hsva 243 0.50 0.1
-
---- RENDER ---
-
-renderBlankSketch :: Generate ()
-renderBlankSketch = do
-  fillScreen eggshell 1
-
-  cairo $ setLineWidth 0.15
-
 
 renderSketch :: Generate ()
 renderSketch = do
@@ -195,7 +118,6 @@ renderSketch = do
     renderPath2 0.52 0 1 0.3 points2
     renderPath2 0 0 1 0.3 points3
     renderPath2 0.52 0 1 0.3 points4
-
 
 
 --- MAIN ---
@@ -223,7 +145,6 @@ main = do
     $ do
       cairo $ scale scaleAmount scaleAmount
       renderSketch
-    
 
   putStrLn "Generating art..."
   surfaceWriteToPNG surface
