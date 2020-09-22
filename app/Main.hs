@@ -63,12 +63,12 @@ data World = World
   , worldScale  :: Double
   }
 
-data Quad = Quad
-  { quadA :: V2 Double
-  , quadB :: V2 Double
-  , quadC :: V2 Double
-  , quadD :: V2 Double
-  } deriving (Eq, Ord)
+-- data Quad = Quad
+--   { quadA :: V2 Double
+--   , quadB :: V2 Double
+--   , quadC :: V2 Double
+--   , quadD :: V2 Double
+--   } deriving (Eq, Ord)
 
 
 type Generate a = RandT StdGen (ReaderT World Render) a
@@ -195,13 +195,7 @@ renderSketch = do
     renderPath2 0.52 0 1 0.3 points2
     renderPath2 0 0 1 0.3 points3
     renderPath2 0.52 0 1 0.3 points4
-    -- renderPath  points1
-    -- (englishVermillion 280) *> stroke
-    -- renderPath  points2
-    -- (englishVermillion 280) *> stroke
-    
 
--- evalRandIO $ renderPath <$> (pathV2 30 30 200) :: IO (Render ())
 
 
 --- MAIN ---
