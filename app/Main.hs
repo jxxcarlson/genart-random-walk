@@ -45,14 +45,27 @@ data World = World
 
 type Generate a = RandT StdGen (ReaderT World Render) a
 
+
+worldWidth_ :: Double
+worldWidth_ = 60
+
+worldHeight_ :: Double
+worldHeight_ = 60
+
+originX :: Double
+originX = worldWidth_/2
+
+originY :: Double
+originY = worldHeight_/2
+
 origin_ :: V2 Double 
-origin_ = V2 30 30
+origin_ = V2 originX originY
 
 genPoints :: Int -> Generate [V2 Double]
 genPoints n = replicateM n $ V2 <$> getRandomR  (-1, 1) <*> getRandomR (-1, 1)
 
 genBrownianPath :: Double -> Double -> Int ->  Generate [V2 Double]
-genBrownianPath x y n = liftM2 (scanl (^+^)) (pure (V2 x y)) (genPoints n)
+genBrownianPath x y n = liftM2 (scanl (^+^)) (pure (V2 (x + originX) (y + originY))) (genPoints n)
 
 --- RENDERING ---
 
@@ -115,6 +128,8 @@ d = 3.0
 a = 0.01
 n = 5000
 
+displacement = 0.33
+
 -- PALLETTE
 
 renderPaleBlue :: [V2 Double] -> Double -> Render ()
@@ -132,27 +147,59 @@ renderPaleCyan points a = renderPathWithSquares 0.52 1 1 a points
 renderMagenta :: [V2 Double] -> Double -> Render ()
 renderMagenta points a = renderPathWithSquares 0.52 0 1 a points
 
+
+-- PATHS
+
+centerPath :: Int -> Generate [V2 Double]
+centerPath n = genBrownianPath 0 0 n
+
+
+
+northPath :: Int -> Generate [V2 Double]
+northPath n = genBrownianPath 0 (-displacement*worldWidth_) n
+
+westPath :: Int -> Generate [V2 Double]
+westPath n = genBrownianPath (-displacement*worldWidth_) 0 n
+
+southPath :: Int -> Generate [V2 Double]
+southPath n = genBrownianPath 0 (displacement*worldHeight_) n
+
+eastPath :: Int -> Generate [V2 Double]
+eastPath n = genBrownianPath (displacement*worldHeight_) 0 n
+
+northWestPath :: Int -> Generate [V2 Double]
+northWestPath n = genBrownianPath (-displacement*worldWidth_) (-displacement*worldHeight_) n
+
+southWestPath :: Int -> Generate [V2 Double]
+southWestPath n = genBrownianPath (-displacement*worldWidth_) (displacement*worldHeight_) n
+
+southEastPath :: Int -> Generate [V2 Double]
+southEastPath n = genBrownianPath (displacement*worldWidth_) (displacement*worldHeight_) n
+
+northEastPath :: Int -> Generate [V2 Double]
+northEastPath n = genBrownianPath (displacement*worldWidth_) (-displacement*worldHeight_)n
+
 renderSketch :: Generate ()
 renderSketch = do
   fillScreen lightBlue 1
 
   cairo $ setLineWidth 0.15
   
-  points1 <- genBrownianPath 30 30 n
-  points2 <- genBrownianPath 32 30 n
-  points3 <- genBrownianPath 34 30 n
-  points4 <- genBrownianPath 30 32 n
-  points5 <- genBrownianPath 30 34 n
-  points6 <- genBrownianPath 30 36 n
-  points7 <- genBrownianPath 30 30 n
+  points1 <- centerPath  n
+  points2 <- genBrownianPath 7 0 n
+  -- points3 <- genBrownianPath 34 30 n
+  -- points4 <- genBrownianPath 30 32 n
+  -- points5 <- genBrownianPath 30 34 n
+  -- points6 <- genBrownianPath 30 36 n
+  -- points7 <- genBrownianPath 30 30 n
   -- points8 <- genBrownianPath 30 30 n
   cairo $ do 
-    renderIntenseBlue points1 a
+    -- renderIntenseBlue points1 a
     renderPaleCyan points2 a
-    renderPaleCyan points3 a
-    renderPaleYellow points4 a
-    renderPaleYellow points5 a
-    renderMagenta points6 a
+    -- renderPaleCyan points3 a
+    -- renderPaleYellow points4 a
+    -- renderPaleYellow points5 a
+    -- renderMagenta points6 a
     -- renderPathWithSquares 0.6 1 1 a points5
     -- renderPathWithSquares 0.52 0 1 a points6
     -- renderPathWithSquares 0.52 0 1 a points7
@@ -166,8 +213,8 @@ main = do
   seed <- round . (*1000) <$> getPOSIXTime
   let
     stdGen = mkStdGen seed
-    width = 60
-    height = 60
+    width = round worldWidth_
+    height = round worldHeight_
     scaleAmount = 20
 
     scaledWidth = round $ fromIntegral width * scaleAmount
