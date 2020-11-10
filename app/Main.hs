@@ -51,36 +51,42 @@ origin_ = V2 30 30
 genPoints :: Int -> Generate [V2 Double]
 genPoints n = replicateM n $ V2 <$> getRandomR  (-1, 1) <*> getRandomR (-1, 1)
 
-genBrownianPath :: Int -> Generate [V2 Double]
-genBrownianPath n = liftM2 (scanl (^+^)) (pure origin_) (genPoints n)
-
+genBrownianPath :: Double -> Double -> Int ->  Generate [V2 Double]
+genBrownianPath x y n = liftM2 (scanl (^+^)) (pure (V2 x y)) (genPoints n)
 
 --- RENDERING ---
 
 -- Render broken line path connecting the points of the argument
-renderPath :: [V2 Double] -> Render ()
-renderPath (V2 x y:vs) = do
+renderLinePath :: [V2 Double] -> Render ()
+renderLinePath (V2 x y:vs) = do
   newPath
   moveTo x y
   for_ vs $ \v -> let V2 x' y' = v in lineTo x' y'
-renderPath [] = pure ()
+renderLinePath [] = pure ()
 
 -- Render a small square of given color with upper left corners at the points of the argument
-renderPath2 :: Double -> Double -> Double -> Double -> [V2 Double] -> Render ()
-renderPath2 r g b a (V2 x y:vs) = do
+renderPathWithSquares :: Double -> Double -> Double -> Double -> [V2 Double] -> Render ()
+renderPathWithSquares r g b a (V2 x y:vs) = do
   drawSquare r g b a x y
   for_ vs $ \v -> let V2 x' y' = v in drawSquare r g b a x' y'
-renderPath2 _ _ _ _ [] = pure ()
+renderPathWithSquares _ _ _ _ [] = pure ()
 
 drawSquare :: Double -> Double -> Double -> Double -> Double -> Double -> Render ()
 drawSquare r g b a x y = do
   setSourceRGBA r g b a
-  rectangle x y 0.4 0.4
+  rectangle x y d d
   fill
 
+-- COLORS
 
 darkBlue :: Double -> Render ()
 darkBlue = hsva 243 0.50 0.1
+
+white :: Double -> Render ()
+white = hsva 243 0.00 1.0
+
+lightBlue :: Double -> Render ()
+lightBlue = hsva 243 0.20 1.0
 
 -- | Lift a Cairo action into a Generate action
 cairo :: Render a -> Generate a
@@ -103,21 +109,54 @@ hsva h s v = setSourceRGBA channelRed channelGreen channelBlue
  where RGB{..} = hsv h s v
 
 
+-- PARAMETERS
+
+d = 3.0
+a = 0.01
+n = 5000
+
+-- PALLETTE
+
+renderPaleBlue :: [V2 Double] -> Double -> Render ()
+renderPaleBlue points a = renderPathWithSquares 0.4 0.4 1 a points
+
+renderIntenseBlue :: [V2 Double] -> Double -> Render ()
+renderIntenseBlue points a = renderPathWithSquares 0 0.1 1 a points
+
+renderPaleYellow :: [V2 Double] -> Double -> Render ()
+renderPaleYellow points a = renderPathWithSquares 0.52 0.5 0.5 a points
+
+renderPaleCyan :: [V2 Double] -> Double -> Render ()
+renderPaleCyan points a = renderPathWithSquares 0.52 1 1 a points
+
+renderMagenta :: [V2 Double] -> Double -> Render ()
+renderMagenta points a = renderPathWithSquares 0.52 0 1 a points
+
 renderSketch :: Generate ()
 renderSketch = do
-  fillScreen darkBlue 1
+  fillScreen lightBlue 1
 
   cairo $ setLineWidth 0.15
   
-  points1 <- genBrownianPath 5000
-  points2 <- genBrownianPath 5000
-  points3 <- genBrownianPath 5000
-  points4 <- genBrownianPath 5000
+  points1 <- genBrownianPath 30 30 n
+  points2 <- genBrownianPath 32 30 n
+  points3 <- genBrownianPath 34 30 n
+  points4 <- genBrownianPath 30 32 n
+  points5 <- genBrownianPath 30 34 n
+  points6 <- genBrownianPath 30 36 n
+  points7 <- genBrownianPath 30 30 n
+  -- points8 <- genBrownianPath 30 30 n
   cairo $ do 
-    renderPath2 0 0 1 0.3 points1
-    renderPath2 0.52 0 1 0.3 points2
-    renderPath2 0 0 1 0.3 points3
-    renderPath2 0.52 0 1 0.3 points4
+    renderIntenseBlue points1 a
+    renderPaleCyan points2 a
+    renderPaleCyan points3 a
+    renderPaleYellow points4 a
+    renderPaleYellow points5 a
+    renderMagenta points6 a
+    -- renderPathWithSquares 0.6 1 1 a points5
+    -- renderPathWithSquares 0.52 0 1 a points6
+    -- renderPathWithSquares 0.52 0 1 a points7
+    -- renderPathWithSquares 0.52 0 1 a points8
 
 
 --- MAIN ---
