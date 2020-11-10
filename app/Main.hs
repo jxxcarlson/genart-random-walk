@@ -124,60 +124,82 @@ hsva h s v = setSourceRGBA channelRed channelGreen channelBlue
 
 -- PARAMETERS
 
-d = 3.0
+d = 8.0
 a = 0.01
 n = 5000
 
 displacement = 0.33
 
--- PALLETTE
+-- PALETTE
 
-renderPaleBlue :: [V2 Double] -> Double -> Render ()
-renderPaleBlue points a = renderPathWithSquares 0.4 0.4 1 a points
+data RGBA = RGBA {red:: Double, green:: Double, blue:: Double, alpha:: Double}
 
-renderIntenseBlue :: [V2 Double] -> Double -> Render ()
-renderIntenseBlue points a = renderPathWithSquares 0 0.1 1 a points
+renderWithColor :: RGBA -> [V2 Double] -> Render ()
+renderWithColor color points =
+  renderPathWithSquares (red color) (green color) (blue color) (alpha color) points
 
-renderPaleYellow :: [V2 Double] -> Double -> Render ()
-renderPaleYellow points a = renderPathWithSquares 0.52 0.5 0.5 a points
 
-renderPaleCyan :: [V2 Double] -> Double -> Render ()
-renderPaleCyan points a = renderPathWithSquares 0.52 1 1 a points
+paleBlue :: Double -> RGBA
+paleBlue a = RGBA {red = 0.4, green = 0.4, blue = 1.0, alpha = a}
 
-renderMagenta :: [V2 Double] -> Double -> Render ()
-renderMagenta points a = renderPathWithSquares 0.52 0 1 a points
+intenseBlue :: Double -> RGBA
+intenseBlue a = RGBA {red = 0, green = 0.1, blue = 1.0, alpha = a}
+
+paleCyan :: Double -> RGBA
+paleCyan a = RGBA {red = 0.52, green = 1.0, blue = 1.0, alpha = a}
+
+paleYellow :: Double -> RGBA
+paleYellow a = RGBA {red = 0.52, green = 0.5, blue = 0.5, alpha = a}
+
+magenta :: Double -> RGBA
+magenta a = RGBA {red = 0.52, green = 0, blue = 1, alpha = a}
+
 
 
 -- PATHS
 
-centerPath :: Int -> Generate [V2 Double]
-centerPath n = genBrownianPath 0 0 n
+data Path = Path { pathX:: Double, pathY:: Double, pathLength:: Int}
+
+translate :: Double -> Double -> Path -> Path 
+translate dx dy Path {pathX = x, pathY = y, pathLength = n} =
+   Path { pathX = x  + dx, pathY = y + dy, pathLength = n}
+   
+
+genPath_ :: Path -> Generate [V2 Double]
+genPath_ p = genBrownianPath (pathX p) (pathY p) (pathLength p)
 
 
+-- COMPASS POINTS
 
-northPath :: Int -> Generate [V2 Double]
-northPath n = genBrownianPath 0 (-displacement*worldWidth_) n
 
-westPath :: Int -> Generate [V2 Double]
-westPath n = genBrownianPath (-displacement*worldWidth_) 0 n
+centerPath :: Int -> Path
+centerPath n = Path { pathX = 0, pathY = 0, pathLength = n}
 
-southPath :: Int -> Generate [V2 Double]
-southPath n = genBrownianPath 0 (displacement*worldHeight_) n
+northPath :: Double -> Int ->  Path 
+northPath delta n = Path { pathX = 0, pathY = -delta*worldWidth_, pathLength = n}
 
-eastPath :: Int -> Generate [V2 Double]
-eastPath n = genBrownianPath (displacement*worldHeight_) 0 n
+northWestPath :: Double -> Int -> Path 
+northWestPath delta n = Path { pathX =  -delta*worldWidth_, pathY = -delta*worldHeight_, pathLength = n}
 
-northWestPath :: Int -> Generate [V2 Double]
-northWestPath n = genBrownianPath (-displacement*worldWidth_) (-displacement*worldHeight_) n
+westPath :: Double -> Int -> Path 
+westPath delta n = Path { pathX =  -delta*worldWidth_, pathY = 0, pathLength = n}
 
-southWestPath :: Int -> Generate [V2 Double]
-southWestPath n = genBrownianPath (-displacement*worldWidth_) (displacement*worldHeight_) n
+southWestPath :: Double -> Int -> Path 
+southWestPath delta n = Path { pathX =  -delta*worldWidth_, pathY = delta*worldHeight_, pathLength = n}
 
-southEastPath :: Int -> Generate [V2 Double]
-southEastPath n = genBrownianPath (displacement*worldWidth_) (displacement*worldHeight_) n
+southPath :: Double -> Int -> Path 
+southPath delta n = Path { pathX =  0, pathY = delta*worldHeight_, pathLength = n}
 
-northEastPath :: Int -> Generate [V2 Double]
-northEastPath n = genBrownianPath (displacement*worldWidth_) (-displacement*worldHeight_)n
+southEastPath :: Double -> Int -> Path 
+southEastPath delta n = Path { pathX =  delta*worldWidth_, pathY = delta*worldHeight_, pathLength = n}
+
+eastPath :: Double -> Int -> Path 
+eastPath delta n = Path { pathX =  delta*worldWidth_, pathY = 0, pathLength = n} 
+
+northEastPath :: Double -> Int -> Path 
+northEastPath delta n = Path { pathX =  delta*worldWidth_, pathY = -delta*worldHeight_, pathLength = n}
+
+
 
 renderSketch :: Generate ()
 renderSketch = do
@@ -185,25 +207,22 @@ renderSketch = do
 
   cairo $ setLineWidth 0.15
   
-  points1 <- centerPath  n
-  points2 <- genBrownianPath 7 0 n
-  -- points3 <- genBrownianPath 34 30 n
-  -- points4 <- genBrownianPath 30 32 n
-  -- points5 <- genBrownianPath 30 34 n
-  -- points6 <- genBrownianPath 30 36 n
-  -- points7 <- genBrownianPath 30 30 n
-  -- points8 <- genBrownianPath 30 30 n
+  points1 <- genPath_ $ centerPath  n
+  points2 <- genPath_ $ (translate 1 0 $ centerPath n)
+  points3 <- genPath_ $ (northWestPath 0.33 n)
+  points4 <- genPath_ $ (southWestPath 0.33 n)
+  points5 <- genPath_ $ (southEastPath 0.33 n)
+  points6 <- genPath_ $ (northEastPath 0.33 n)
   cairo $ do 
-    -- renderIntenseBlue points1 a
-    renderPaleCyan points2 a
-    -- renderPaleCyan points3 a
-    -- renderPaleYellow points4 a
-    -- renderPaleYellow points5 a
-    -- renderMagenta points6 a
-    -- renderPathWithSquares 0.6 1 1 a points5
-    -- renderPathWithSquares 0.52 0 1 a points6
-    -- renderPathWithSquares 0.52 0 1 a points7
-    -- renderPathWithSquares 0.52 0 1 a points8
+    renderWithColor (intenseBlue a) points1
+    renderWithColor (paleCyan a) points2
+    renderWithColor (paleYellow a) points2
+    renderWithColor (magenta a) points3
+    renderWithColor (magenta a) points4
+    renderWithColor (paleCyan a) points4
+    renderWithColor (paleYellow a) points5
+    renderWithColor (magenta a) points6
+
 
 
 --- MAIN ---
